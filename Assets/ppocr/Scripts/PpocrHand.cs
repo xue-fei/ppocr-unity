@@ -27,7 +27,7 @@ namespace PPOCR
         public int candidateCount = 5;
 
         [Tooltip("手写画板像素尺寸（正方形）")]
-        public int canvasSize = 360;
+        public int canvasSize = 720;
 
         [Tooltip("画笔半径（像素）")]
         public int brushRadius = 5;
@@ -44,6 +44,36 @@ namespace PPOCR
         private string _status = "初始化…";
         private List<RecCandidate> _candidates;
         private Rect _canvasRect;
+        private GUIStyle _uiStyle;
+        private GUIStyle _btnStyle;
+
+        /// <summary>统一放大的文字样式（标题/标签/候选共用），首次使用时惰性创建。</summary>
+        private GUIStyle UiStyle
+        {
+            get
+            {
+                if (_uiStyle == null)
+                {
+                    _uiStyle = new GUIStyle(GUI.skin.label);
+                    _uiStyle.fontSize = 26; // 默认约 13，放大一倍
+                }
+                return _uiStyle;
+            }
+        }
+
+        /// <summary>放大后的按钮文字样式。</summary>
+        private GUIStyle BtnStyle
+        {
+            get
+            {
+                if (_btnStyle == null)
+                {
+                    _btnStyle = new GUIStyle(GUI.skin.button);
+                    _btnStyle.fontSize = 24;
+                }
+                return _btnStyle;
+            }
+        }
 
         private void Awake()
         {
@@ -85,9 +115,9 @@ namespace PPOCR
             int x = 10;
             int y = 10;
 
-            GUI.Label(new Rect(x, y, 480, 24),
-                "PP-OCR 手写识别 (" + modelSize + ")  " + _status);
-            y += 28;
+            GUI.Label(new Rect(x, y, 720, 36),
+                "PP-OCR 手写识别 (" + modelSize + ")  " + _status, UiStyle);
+            y += 36;
 
             // ---- 画板 ----
             _canvasRect = new Rect(x, y, canvasSize, canvasSize);
@@ -138,25 +168,25 @@ namespace PPOCR
 
             // ---- 按钮 ----
             GUI.enabled = _recognizer != null && !_busy && _hasInk;
-            if (GUI.Button(new Rect(x, y, 120, 30), "识别"))
+            if (GUI.Button(new Rect(x, y, 160, 44), "识别", BtnStyle))
             {
                 StartCoroutine(RecognizeRoutine());
             }
 
             GUI.enabled = _recognizer != null && !_busy;
-            if (GUI.Button(new Rect(x + 130, y, 120, 30), "清除"))
+            if (GUI.Button(new Rect(x + 180, y, 160, 44), "清除", BtnStyle))
             {
                 ClearInk();
             }
 
             GUI.enabled = true;
-            y += 40;
+            y += 54;
 
             // ---- 裁剪预览 ----
             if (_cropTex != null && _cropTex.width > 2)
             {
-                GUI.Label(new Rect(x, y, 200, 20), "识别用裁剪图：");
-                y += 22;
+                GUI.Label(new Rect(x, y, 200, 36), "识别用裁剪图：", UiStyle);
+                y += 32;
                 float cw = Mathf.Min(140f, _cropTex.width);
                 float ch = cw * _cropTex.height / _cropTex.width;
                 GUI.DrawTexture(new Rect(x, y, cw, ch), _cropTex);
@@ -164,8 +194,8 @@ namespace PPOCR
             }
 
             // ---- 候选列表 ----
-            GUI.Label(new Rect(x, y, 200, 20), "候选字（按置信度）：");
-            y += 22;
+            GUI.Label(new Rect(x, y, 480, 36), "候选字（按置信度）：", UiStyle);
+            y += 32;
             if (_candidates != null && _candidates.Count > 0)
             {
                 for (int i = 0; i < _candidates.Count; i++)
@@ -175,13 +205,13 @@ namespace PPOCR
                     string ch = (c.Text != null && c.Text.Length > 0) ? c.Text[0].ToString() : "（空）";
                     string label = (i + 1) + ".  " + ch
                         + "   置信度 " + (c.Score * 100f).ToString("F1") + "%";
-                    GUI.Label(new Rect(x, y, 460, 20), label);
-                    y += 22;
+                    GUI.Label(new Rect(x, y, 480, 40), label, UiStyle);
+                    y += 44;
                 }
             }
             else if (_hasInk)
             {
-                GUI.Label(new Rect(x, y, 300, 20), "（点击“识别”获取候选）");
+                GUI.Label(new Rect(x, y, 420, 36), "（点击“识别”获取候选）", UiStyle);
             }
         }
 
