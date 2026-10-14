@@ -124,5 +124,49 @@ namespace PPOCR
             Array.Copy(Data, copy.Data, Data.Length);
             return copy;
         }
+
+        /// <summary>
+        /// 裁剪子区域 [x, y, w, h]（左上角原点，越过边界自动钳制）。
+        /// 用于手写画板把墨迹区域切出来送识别。
+        /// </summary>
+        public ImageBuffer Crop(int x, int y, int w, int h)
+        {
+            if (w <= 0 || h <= 0) return new ImageBuffer(1, 1);
+            x = Math.Max(0, Math.Min(x, Width - 1));
+            y = Math.Max(0, Math.Min(y, Height - 1));
+            w = Math.Min(w, Width - x);
+            h = Math.Min(h, Height - y);
+            if (w <= 0 || h <= 0) return new ImageBuffer(1, 1);
+
+            var crop = new ImageBuffer(w, h);
+            for (int j = 0; j < h; j++)
+            {
+                int srcRow = (y + j) * Width * 3;
+                int dstRow = j * w * 3;
+                Array.Copy(Data, srcRow + x * 3, crop.Data, dstRow, w * 3);
+            }
+
+            return crop;
+        }
+
+        /// <summary>
+        /// 把本图按顶部原点上传到已有的 Texture2D（RGB24，尺寸需一致），
+        /// 自动翻转为 GPU 自底向上行序并 Apply。用于手写画板实时刷新显示，
+        /// 避免每帧 new 一张纹理。
+        /// </summary>
+        public void UploadToTexture(Texture2D tex)
+        {
+            if (tex == null || tex.width != Width || tex.height != Height) return;
+            byte[] raw = new byte[Data.Length];
+            for (int y = 0; y < Height; y++)
+            {
+                int srcRow = y * Width * 3;
+                int dstRow = (Height - 1 - y) * Width * 3;
+                Array.Copy(Data, srcRow, raw, dstRow, Width * 3);
+            }
+
+            tex.LoadRawTextureData(raw);
+            tex.Apply();
+        }
     }
 }

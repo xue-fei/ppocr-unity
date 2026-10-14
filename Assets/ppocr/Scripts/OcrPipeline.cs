@@ -122,6 +122,81 @@ namespace PPOCR
         }
 
         /// <summary>
+        /// 仅加载识别器（不加载检测器），用于手写单字识别等无需检测的场景。
+        /// 同步版本，桌面/编辑器可用；Android 请用 CreateRecognizerOnlyAsync。
+        /// </summary>
+        public static TextRecognizer CreateRecognizerOnly(ModelSize size = ModelSize.Small,
+            string streamingRoot = null)
+        {
+            RecognizerConfig recConfig = RecognizerConfig.FromSize(size);
+
+            string recYmlPath = PpocrAssets.BuildPath(recConfig.ModelDir, recConfig.YmlFileName, streamingRoot);
+            InferenceYml recYml = InferenceYml.Parse(PpocrAssets.ReadAllText(recYmlPath, streamingRoot));
+            recConfig.Channels = recYml.RecChannels;
+            recConfig.Height = recYml.RecHeight;
+            recConfig.Width = recYml.RecWidth;
+
+            if (recYml.CharacterDict.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "inference.yml 中未找到 character_dict: " + recYmlPath);
+            }
+
+            byte[] recBytes = PpocrAssets.ReadAllBytes(
+                PpocrAssets.BuildPath(recConfig.ModelDir, recConfig.OnnxFileName, streamingRoot), streamingRoot);
+
+            return new TextRecognizer(recBytes, recConfig, recYml.CharacterDict);
+        }
+
+        /// <summary>
+        /// 仅加载识别器（异步协程版，全平台可用）。
+        /// </summary>
+        public static void CreateRecognizerOnlyAsync(ModelSize size,
+            Action<TextRecognizer> onDone, Action<Exception> onError)
+        {
+            PpocrCoroutine.Run(RecOnlyCoroutine(size, onDone, onError));
+        }
+
+        private static IEnumerator<object> RecOnlyCoroutine(ModelSize size,
+            Action<TextRecognizer> onDone, Action<Exception> onError)
+        {
+            RecognizerConfig recConfig = RecognizerConfig.FromSize(size);
+            string recYmlPath = PpocrAssets.BuildPath(recConfig.ModelDir, recConfig.YmlFileName);
+            string recOnnxPath = PpocrAssets.BuildPath(recConfig.ModelDir, recConfig.OnnxFileName);
+
+            byte[] recYmlBytes = null;
+            byte[] recBytes = null;
+            Exception error = null;
+
+            yield return PpocrAssets.ReadAllBytesAsync(recYmlPath, b => recYmlBytes = b, e => error = e);
+            if (error != null) { onError(error); yield break; }
+
+            yield return PpocrAssets.ReadAllBytesAsync(recOnnxPath, b => recBytes = b, e => error = e);
+            if (error != null) { onError(error); yield break; }
+
+            try
+            {
+                InferenceYml recYml = InferenceYml.Parse(Encoding.UTF8.GetString(recYmlBytes));
+                recConfig.Channels = recYml.RecChannels;
+                recConfig.Height = recYml.RecHeight;
+                recConfig.Width = recYml.RecWidth;
+
+                if (recYml.CharacterDict.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        "inference.yml 中未找到 character_dict: " + recYmlPath);
+                }
+
+                var recognizer = new TextRecognizer(recBytes, recConfig, recYml.CharacterDict);
+                onDone(recognizer);
+            }
+            catch (Exception ex)
+            {
+                onError(ex);
+            }
+        }
+
+        /// <summary>
         /// 协程版异步创建：可在协程中 yield 等待完成。
         /// </summary>
         public static IEnumerator CreateAsyncCoroutine(DetectorConfig detConfig,

@@ -7,3 +7,5 @@ Temp
 Assets/StreamingAssets
 *.csproj
 *.dwlt
+.vs
+obj

@@ -53,5 +53,33 @@ namespace PPOCR.EditorTools
         {
             return !EditorApplication.isPlaying;
         }
+
+        [MenuItem("Tools/PPOCR/Create Handwriting Scene", false, 11)]
+        public static void CreateHandScene()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // 主相机
+            var camGo = new GameObject("Main Camera");
+            camGo.tag = "MainCamera";
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.18f, 0.18f, 0.18f);
+            camGo.transform.position = new Vector3(0, 0, -10);
+
+            // 手写识别组件
+            var handGo = new GameObject("PPOCR-Hand");
+            handGo.AddComponent<PpocrHand>();
+
+            EditorSceneManager.SaveScene(scene, "Assets/ppocr/Scenes/PpocrHand.unity");
+            AssetDatabase.Refresh();
+            Debug.Log("[PPOCR] 手写识别场景已创建: Assets/ppocr/Scenes/PpocrHand.unity");
+        }
+
+        [MenuItem("Tools/PPOCR/Create Handwriting Scene", true)]
+        private static bool ValidateCreateHandScene()
+        {
+            return !EditorApplication.isPlaying;
+        }
     }
 }
