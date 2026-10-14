@@ -5,3 +5,5 @@ Temp
 .vsconfig
 *.sln
 Assets/StreamingAssets
+*.csproj
+*.dwlt
